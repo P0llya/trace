@@ -1,0 +1,873 @@
+openapi: 3.0.3
+info:
+  title: Trace API
+  description: >-
+    REST API для веб-платформы Trace - личные цифровые коллекции (цифровой
+    скрапбукинг). MVP, версия 1.0
+  version: 1.0.0
+  contact:
+    name: Trace
+servers:
+  - url: https://api.trace.app/api/v1
+    description: Production
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+    description: Авторизация и управление сессией
+  - name: Collections
+    description: Коллекции пользователя
+  - name: Artifacts
+    description: Артефакты внутри коллекций
+paths:
+  /auth/registration:
+    post:
+      tags:
+        - Auth
+      summary: Регистрация нового пользователя
+      description: Создает учетную запись, возвращает JWT-токен.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/registrationRequest'
+            example:
+              email: anyapetrova99@gmail.com
+              password: mypswd123
+              name: Аня Петрова
+      responses:
+        '201':
+          description: Пользователь создан и авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          description: Email уже зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Ошибка валидации (некорректный email, пароль меньше 8 символов)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Авторизация пользователя
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: anyapetrova99@gmail.com
+              password: mypswd123
+      responses:
+        '200':
+          description: Успешная авторизация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Неверный email или пароль
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: Завершить сессию (инвалидировать токен)
+      responses:
+        '204':
+          description: Сессия завершена
+  /collections:
+    get:
+      tags:
+        - Collections
+      summary: Список коллекций текущего пользователя
+      description: >-
+        Возвращает постраничный список коллекций, отсортированный по последнему
+        обновлению.
+      parameters:
+        - name: page
+          in: query
+          description: Номер страницы (с 1)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - name: limit
+          in: query
+          description: Количество элементов на странице (макс. 50)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+          example: 20
+      responses:
+        '200':
+          description: Список коллекций
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Collections
+      summary: Создать новую коллекцию
+      description: Модальное окно создания.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateCollectionRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCollectionRequest'
+            example:
+              name: Мемы 2025
+              description: Лучшее за год
+      responses:
+        '201':
+          description: Коллекция создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: Название не указано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+  /collections/{collectionId}:
+    parameters:
+      - name: collectionId
+        in: path
+        required: true
+        description: UUID коллекции
+        schema:
+          type: string
+          format: uuid
+        example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    get:
+      tags:
+        - Collections
+      summary: Метаданные коллекции
+      description: Шапка страницы коллекции (название, обложка).
+      responses:
+        '200':
+          description: Коллекция найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - Collections
+      summary: Обновить коллекцию (название, описание, обложка)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UpdateCollectionRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCollectionRequest'
+      responses:
+        '200':
+          description: Коллекция обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Collections
+      summary: Удалить коллекцию вместе со всеми артефактами
+      responses:
+        '204':
+          description: Коллекция удалена
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /collections/{collectionId}/artifacts:
+    parameters:
+      - name: collectionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags:
+        - Artifacts
+      summary: Список артефактов коллекции
+      description: Сетка артефактов с пагинацией и фильтрацией по тегу.
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 40
+        - name: tag
+          in: query
+          description: Фильтр по одному тегу
+          schema:
+            type: string
+          example: котики
+        - name: type
+          in: query
+          description: Фильтр по типу артефакта
+          schema:
+            type: string
+            enum:
+              - image
+              - text
+      responses:
+        '200':
+          description: Список артефактов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtifactListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags:
+        - Artifacts
+      summary: Загрузить артефакт(ы) в коллекцию
+      description: >
+        Поддерживает два режима:
+
+        - `multipart/form-data` с полем "file" - загрузка файла
+        (JPG/PNG/GIF/TXT)
+
+        - `application/json` с полем "content" - добавление текстовой цитаты без
+        файла
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadArtifactRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQuoteArtifactRequest'
+            example:
+              name: Любимая цитата из книг
+              content: Красота спасет мир
+              tags:
+                - цитаты
+                - книги
+      responses:
+        '201':
+          description: Артефакт создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtifactResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          description: Файл превышает 25 МБ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Неподдерживаемый формат файла
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '507':
+          description: Превышен лимит хранилища (1 ГБ для бесплатного тарифа)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageLimitErrorResponse'
+  /artifacts/{artifactId}:
+    parameters:
+      - name: artifactId
+        in: path
+        required: true
+        description: UUID артефакта
+        schema:
+          type: string
+          format: uuid
+        example: f9e8d7c6-b5a4-3210-fedc-ba9876543210
+    get:
+      tags:
+        - Artifacts
+      summary: Детали артефакта
+      description: Карточка просмотра артефакта (название, теги, описание).
+      responses:
+        '200':
+          description: Артефакт найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtifactResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - Artifacts
+      summary: Обновить метаданные артефакта (название, описание, теги)
+      description: Кнопка «Сохранить». Файл не заменяется, только метаданные.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateArtifactRequest'
+            example:
+              name: Котик на клавиатуре
+              description: Прислала Света в декабре 2023
+              tags:
+                - мемы
+                - котики
+                - будни
+      responses:
+        '200':
+          description: Артефакт обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtifactResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Artifacts
+      summary: Удалить артефакт и его файл из хранилища
+      responses:
+        '204':
+          description: Артефакт удален
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT-токен, получаемый при /auth/login или /auth/registration
+  responses:
+    Unauthorized:
+      description: Токен отсутствует или истек
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Ресурс не найден или не принадлежит пользователю
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ArtifactType:
+      type: string
+      description: Тип артефакта - определяется при загрузке, изменить нельзя
+      enum:
+        - image
+        - text
+      example: image
+    PaginationMeta:
+      type: object
+      description: Метаданные постраничной выдачи
+      required:
+        - page
+        - limit
+        - total
+        - total_pages
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          description: Общее количество элементов
+          example: 47
+        total_pages:
+          type: integer
+          example: 3
+    User:
+      type: object
+      required:
+        - id
+        - email
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          nullable: true
+          example: Аня
+        created_at:
+          type: string
+          format: date-time
+    registrationRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: anyapetrova99@gmail.com
+        password:
+          type: string
+          minLength: 8
+          description: Минимум 8 символов
+          example: mypassword123
+        name:
+          type: string
+          nullable: true
+          example: Аня
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    AuthResponse:
+      type: object
+      required:
+        - token
+        - user
+      properties:
+        token:
+          type: string
+          description: JWT Bearer-токен
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        user:
+          $ref: '#/components/schemas/User'
+    Collection:
+      type: object
+      required:
+        - id
+        - name
+        - created_at
+        - updated_at
+        - artifact_count
+        - owner_id
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          example: Мемы 2023
+        description:
+          type: string
+          nullable: true
+          maxLength: 500
+          example: Все смешное из этого года
+        cover_url:
+          type: string
+          format: uri
+          nullable: true
+          description: URL обложки (превью) коллекции
+          example: https://storage.trace.app/covers/a1b2c3.jpg
+        artifact_count:
+          type: integer
+          description: Количество артефактов в коллекции
+          example: 14
+        owner_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CollectionResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Collection'
+    CollectionListResponse:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Collection'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    CreateCollectionRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          example: Мемы 2025
+        description:
+          type: string
+          nullable: true
+          maxLength: 500
+        cover:
+          type: string
+          format: binary
+          nullable: true
+          description: Изображение обложки (в multipart/form-data)
+    UpdateCollectionRequest:
+      type: object
+      description: Все поля опциональны — обновляются только переданные
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          nullable: true
+          maxLength: 500
+        cover:
+          type: string
+          format: binary
+          nullable: true
+          description: Новая обложка
+    Artifact:
+      type: object
+      required:
+        - id
+        - collection_id
+        - name
+        - type
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        collection_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 255
+          example: meme_cat.png
+        type:
+          $ref: '#/components/schemas/ArtifactType'
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+          example: Прислала Света в декабре 2023
+        tags:
+          type: array
+          description: Список тегов артефакта (0–20 тегов, каждый до 50 символов)
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 50
+          example:
+            - мемы
+            - котики
+        file:
+          $ref: '#/components/schemas/ArtifactFile'
+        content:
+          type: string
+          nullable: true
+          description: Текстовое содержимое (для type=text без файла - цитата)
+          example: Красота спасет мир
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ArtifactFile:
+      type: object
+      nullable: true
+      description: >-
+        Вложенный объект с информацией о файле (null для текстовых цитат без
+        файла)
+      required:
+        - url
+        - size_bytes
+        - mime_type
+        - original_name
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Подписанный URL для доступа к файлу
+          example: https://storage.trace.app/files/f9e8d7c6.jpg?token=abc123
+        thumbnail_url:
+          type: string
+          format: uri
+          nullable: true
+          description: URL превью (генерируется только для изображений)
+          example: https://storage.trace.app/thumbs/f9e8d7c6_sm.jpg?token=abc123
+        size_bytes:
+          type: integer
+          description: Размер файла в байтах
+          example: 1258291
+        mime_type:
+          type: string
+          description: Тип файла
+          example: image/jpeg
+        original_name:
+          type: string
+          description: Оригинальное имя файла при загрузке
+          example: meme_cat.jpg
+    ArtifactResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Artifact'
+    ArtifactListResponse:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Artifact'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    UploadArtifactRequest:
+      type: object
+      description: Загрузка файла (multipart/form-data)
+      required:
+        - file
+      properties:
+        file:
+          type: string
+          format: binary
+          description: Файл JPG/PNG/GIF/TXT, максимум 25 МБ
+        name:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: >-
+            Название артефакта. Если не указано - берется имя файла без
+            расширения
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 50
+          maxItems: 20
+          description: 'Теги (передаются как повторяющиеся поля: tags[]=мемы&tags[]=котики)'
+    CreateQuoteArtifactRequest:
+      type: object
+      description: Создание текстовой цитаты без файла (application/json)
+      required:
+        - content
+      properties:
+        name:
+          type: string
+          nullable: true
+          maxLength: 255
+          example: Цитаты из книг
+        content:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          description: Текст цитаты
+          example: Красота спасет мир
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 50
+          maxItems: 20
+          example:
+            - цитаты
+            - книги
+    UpdateArtifactRequest:
+      type: object
+      description: Обновление метаданных (файл не заменяется)
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+        tags:
+          type: array
+          description: Полная замена списка тегов (не добавление)
+          items:
+            type: string
+            maxLength: 50
+          maxItems: 20
+          example:
+            - мемы
+            - котики
+            - работа
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: Машиночитаемый код ошибки
+              example: COLLECTION_NOT_FOUND
+            message:
+              type: string
+              description: Человекочитаемое описание
+              example: Коллекция не найдена или у вас нет к ней доступа
+    ValidationErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+            - fields
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              example: Ошибка валидации входных данных
+            fields:
+              type: array
+              description: Список полей с ошибками
+              items:
+                type: object
+                required:
+                  - field
+                  - message
+                properties:
+                  field:
+                    type: string
+                    example: email
+                  message:
+                    type: string
+                    example: Введите корректный email-адрес
+    StorageLimitErrorResponse:
+      type: object
+      description: Специальный ответ при превышении лимита хранилища
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+            - storage
+          properties:
+            code:
+              type: string
+              example: STORAGE_LIMIT_EXCEEDED
+            message:
+              type: string
+              example: Превышен лимит хранилища. Удалите файлы или перейдите на Premium
+            storage:
+              type: object
+              description: Вложенный объект с деталями хранилища
+              required:
+                - used_bytes
+                - limit_bytes
+                - tier
+              properties:
+                used_bytes:
+                  type: integer
+                  example: 1073741900
+                limit_bytes:
+                  type: integer
+                  example: 1073741824
+                tier:
+                  type: string
+                  enum:
+                    - free
+                    - premium
+                  example: free
