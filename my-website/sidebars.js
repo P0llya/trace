@@ -1,55 +1,48 @@
 // @ts-check
 
-// This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
-
-/**
- * Creating a sidebar enables you to:
- - create an ordered group of docs
- - render a sidebar for each doc of that group
- - provide next/previous navigation
-
- The sidebars can be generated from the filesystem, or explicitly defined here.
-
- Create as many sidebars as you want.
-
- @type {import('@docusaurus/plugin-content-docs').SidebarsConfig}
- */
+/** @type {import('@docusaurus/plugin-content-docs').SidebarsConfig} */
 const sidebars = {
   docs: [
     'intro',
     {
       type: 'category',
       label: 'Концепция продукта',
+      link: { type: 'generated-index', title: 'Концепция продукта', description: 'Обзор концепции, проблемы, целевая аудитория и бизнес-цели.' },
       items: ['concept/overview'],
     },
     {
       type: 'category',
       label: 'Требования',
+      link: { type: 'generated-index', title: 'Требования', description: 'Функциональные и нефункциональные требования к системе Trace.' },
       items: ['requirements/functional', 'requirements/non-functional'],
     },
     {
       type: 'category',
       label: 'Бизнес-процессы',
+      link: { type: 'generated-index', title: 'Бизнес-процессы', description: 'Моделирование бизнес-процессов: BPMN и DMN.' },
       items: ['business-processes/create-collection'],
     },
     {
-      type: 'category',
+      type: 'link',
       label: 'API',
-      items: ['api/overview'],
+      href: '/docs/api/trace'
     },
     {
       type: 'category',
       label: 'Модель данных',
+      link: { type: 'generated-index', title: 'Модель данных', description: 'Концептуальная, логическая и физическая модели данных.' },
       items: ['data-model/erd'],
     },
     {
       type: 'category',
       label: 'Архитектура',
+      link: { type: 'generated-index', title: 'Архитектура', description: 'Архитектурные решения: асинхронная обработка, платформизация, хранение данных.' },
       items: ['architecture/async-thumbnails', 'architecture/platformization', 'architecture/storage'],
     },
     {
       type: 'category',
       label: 'Шаблоны артефактов',
+      link: { type: 'generated-index', title: 'Шаблоны артефактов', description: 'Заготовки документов для дальнейшего проектирования.' },
       items: ['templates/deployment', 'templates/algorithms-capsule', 'templates/monitoring'],
     },
   ],

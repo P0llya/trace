@@ -54,6 +54,7 @@ const config = {
           {
             id: 'trace',
             spec: 'api_specs/trace_openapi-fin.yaml',
+            route: '/docs/api/trace',
           },
         ],
         theme: {
@@ -74,17 +75,9 @@ const config = {
       title: 'Trace',
       logo: { alt: 'Trace Logo', src: 'img/logo.svg' },
       items: [
-        {
-          type: 'docSidebar',
-          sidebarId: 'docs',
-          position: 'left',
-          label: 'Документация',
-        },
-        {
-          href: 'https://github.com/P0llya/trace',
-          label: 'GitHub',
-          position: 'right',
-        },
+        { type: 'docSidebar', sidebarId: 'docs', label: 'Документация', position: 'left' },
+        { to: '/docs/api/trace', label: 'API', position: 'left' },
+        { href: 'https://github.com/P0llya/trace', label: 'GitHub', position: 'right' },
       ],
     },
       footer: {
