@@ -17,10 +17,15 @@ const config = {
   trailingSlash: false,
   deploymentBranch: 'gh-pages',
   onBrokenLinks: 'warn',
-  onBrokenMarkdownLinks: 'warn',
+
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
+  },
 
   plugins: [
-    ['drawio', {}]
+    ['drawio', {}],
   ],
   
   presets: [
