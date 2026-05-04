@@ -1,6 +1,5 @@
 ---
 title: Введение
-sidebar_position: 1
 ---
 
 # Добро пожаловать в Trace
